@@ -2,7 +2,7 @@
   "_comment": "This is the Chrome/Manifest V3 version. Firefox users should use manifest-firefox.json (Manifest V2)",
   "manifest_version": 3,
   "name": "TranscripTonic",
-  "version": "3.2.5",
+  "version": "3.2.6",
   "description": "Simple Google Meet transcripts. Private and open source.",
   "action": {
     "default_icon": "icon.png",

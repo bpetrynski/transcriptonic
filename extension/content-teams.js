@@ -125,6 +125,24 @@ function teams() {
       //*********** MEETING START ROUTINES **********//
       updateMeetingTitle()
 
+      // Fire captions shortcut based on operation mode. Async operation.
+      chrome.storage.sync.get(["operationMode"], function (resultSyncUntyped) {
+        const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
+        if (resultSync.operationMode === "manual") {
+          console.log("Manual mode selected, leaving transcript off")
+          showNotification({ status: 400, message: "<strong>TranscripTonic is not running</strong> <br /> Turn on captions, if needed (More > Language > Captions)" })
+        }
+        else {
+          // Allow keyboard event listener to be ready
+          setTimeout(() => {
+            dispatchLiveCaptionsShortcut()
+            // Show message to enable because keyboard shortcut does not work in guest meetings or on Mac
+            showNotification(extensionStatusJSON)
+          }, 2000)
+        }
+      })
+
+
       /** @type {MutationObserver} */
       let transcriptObserver
 
@@ -164,17 +182,18 @@ function teams() {
           logError("001", err)
         })
 
-      // Show confirmation message from extensionStatusJSON, once observation has started, based on operation mode
-      if (!isTranscriptDomErrorCaptured) {
-        showNotification(extensionStatusJSON)
-      }
 
       //*********** MEETING END ROUTINES **********//
       try {
         // CRITICAL DOM DEPENDENCY. Event listener to capture meeting end button click by user
-        const endCallElement1 = document.querySelector("#hangup-button")?.parentElement
-        endCallElement1?.addEventListener("click", function meetingEndRoutines() {
-          endCallElement1.removeEventListener("click", meetingEndRoutines)
+        let endCallElement = document.querySelector("#hangup-button")
+        if (endCallElement?.nextElementSibling?.tagName === "button") {
+          endCallElement = /** @type {Element} */ (document.querySelector("#hangup-button")?.parentElement)
+        }
+        endCallElement?.addEventListener("click", meetingEndRoutines)
+
+        function meetingEndRoutines() {
+          endCallElement?.removeEventListener("click", meetingEndRoutines)
           console.log("Meeting ended")
           // To suppress further errors
           hasMeetingEnded = true
@@ -188,7 +207,7 @@ function teams() {
           }
           // Save to chrome storage and send message to download transcript from background script
           overWriteChromeStorage(["transcript", "chatMessages"], true)
-        })
+        }
       } catch (err) {
         console.error(err)
         showNotification(extensionStatusJSON_bug)
@@ -393,6 +412,35 @@ function teams() {
       }
     }
     return document.querySelector(selector)
+  }
+
+
+  function dispatchLiveCaptionsShortcut() {
+    let key, code, modifiers
+
+    // Mac: Command+Shift+A
+    key = 'a'
+    code = 'KeyA'
+    modifiers = { metaKey: true, shiftKey: true, bubbles: true }
+
+    let event = new KeyboardEvent('keydown', {
+      key: key,
+      code: code,
+      ...modifiers // Apply the OS-specific modifiers
+    })
+    document.dispatchEvent(event)
+
+    // Windows: Alt+Shift+C (defaulting non-Mac to Windows)
+    key = 'c'
+    code = 'KeyC'
+    modifiers = { altKey: true, shiftKey: true, bubbles: true }
+
+    event = new KeyboardEvent('keydown', {
+      key: key,
+      code: code,
+      ...modifiers // Apply the OS-specific modifiers
+    })
+    document.dispatchEvent(event)
   }
 
   // Shows a responsive notification of specified type and message
